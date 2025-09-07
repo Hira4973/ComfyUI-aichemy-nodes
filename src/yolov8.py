@@ -128,6 +128,17 @@ class YOLOv8SegmentationNode:
         result = model(self.tensor2PIL(image[0]))[0] #only one image at a time
         
         class_mask_inds = torch.where(result.boxes.data[:, 5] == class_ind)
+
+        if result.masks is None:
+            #From  ComfyUI/comfy_extras/nodes_mask.py https://github.com/comfyanonymous/ComfyUI/blob/master/comfy_extras/nodes_mask.py
+            #def solid(self, value, width, height):
+            #   out = torch.full((1, height, width), value, dtype=torch.float32, device="cpu")
+            #   return (out,)
+            out = torch.full((1, result.orig_shape[1], result.orig_shape[0]), 0, dtype=torch.float32, device="cpu")
+            return (
+                torch.unsqueeze(out, 0),
+                torch.unsqueeze(self.PIL2tensor(result.plot()[:, :, ::-1]), 0), #BGR to RGB
+            )
         class_masks = result.masks.data[class_mask_inds]
 
         class_mask = torch.any(class_masks, dim=0) if combine or instance_ind >= class_masks.shape[0] else class_masks[instance_ind]
